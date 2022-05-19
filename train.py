@@ -1,6 +1,7 @@
 from pytorchkpn.engine import DefaultTrainer
 from pytorchkpn.data import DatasetCatalog
 from pytorchkpn.config import get_cfg
+import numpy as np
 import os, json
 
 class DataList:
@@ -22,6 +23,10 @@ DatasetCatalog.register("train", DataList(open("../train.txt").read().splitlines
 DatasetCatalog.register("val", DataList(open("../val.txt").read().splitlines()).get_datalist)
 
 cfg = get_cfg()
-cfg.DATASETS.TRAIN = ("train", )
-cfg.DATASETS.VAL = ("val")
+cfg.DATASETS.TRAIN = ("train",)
+cfg.DATASETS.VAL = ("val",)
+
+os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+
 trainer = DefaultTrainer(cfg)
+trainer.train()

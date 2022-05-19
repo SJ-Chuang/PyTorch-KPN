@@ -11,4 +11,4 @@ class LRASPP(nn.Module):
         self._model = models.segmentation.lraspp_mobilenet_v3_large(num_classes=1)
     
     def forward(self, x):
-        return self._model(x)
+        return self._model(x)["out"]

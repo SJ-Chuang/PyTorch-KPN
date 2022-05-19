@@ -3,6 +3,22 @@ PyTorch implementation of Keypoint Proposal Network, with support for training, 
 
 ## Installation
 
+Clone this repo to local.
+
+```
+git clone https://github.com/SJ-Chuang/PyTorch-KPN.git
+cd PyTorch-KPN
+```
+
+Requirement installation.
+
+```
+pip install -r requirements.txt
+```
+
 ## Train
 
-## Test
+```
+python train.py
+```
+
