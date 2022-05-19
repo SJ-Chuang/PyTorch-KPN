@@ -48,6 +48,7 @@ class DefaultTrainer:
             self.model.load_state_dict(torch.load(self.cfg.MODEL.WEIGHTS))
             print(f"Load weights from {self.cfg.MODEL.WEIGHTS}")
         
+        open(os.path.join(self.output_dir, "kpn_cfg.yaml"), "w").write(self.cfg.dump())
         lowest_val_loss, history = float("inf"), [[], []]
         for e in range(self.epoch):
             self.model.train()
