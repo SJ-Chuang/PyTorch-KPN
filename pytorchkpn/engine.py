@@ -90,7 +90,7 @@ class DefaultTrainer:
         Returns:
             torch.nn.Module
         """
-        model = MODEL_REGISTRY.get(cfg.MODEL.NAME)(cfg.MODEL.INPUT_SHAPE)
+        model = MODEL_REGISTRY.get(cfg.MODEL.NAME)(cfg.MODEL.INPUT_SHAPE, cfg.MODEL.NUM_CLASSES)
         logger.info(f"Model: {model}")
         return model
 

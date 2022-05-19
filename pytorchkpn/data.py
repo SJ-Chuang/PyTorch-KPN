@@ -50,17 +50,16 @@ class _DatasetCatalog(UserDict):
         self.pop(name)
         
 class KPDataset(Dataset):
-    def __init__(self, data_list: List, input_shape: Tuple[int]=(416, 416), sigma: int=3, device="cuda"):
+    def __init__(self, cfg, data_list: List):
         """
+        cfg (CfgNode): the full config to be used.
         data_list (List): list of keypoint dataset
-        input_shape (Tuple[int]): input shape (W, H) of the model.
-        sigma (int): sigma of gaussian kernel.
-        device (str): device to use
         """
         self.data_list = data_list
-        self.input_shape = input_shape
-        self.sigma = sigma
-        self.device = device
+        self.input_shape = cfg.MODEL.INPUT_SHAPE
+        self.num_classes = cfg.MODEL.NUM_CLASSES
+        self.sigma = cfg.DATASETS.SIGMA
+        self.device = cfg.MODEL.DEVICE
     
     def __len__(self):
         return len(self.data_list)
@@ -76,10 +75,13 @@ class KPDataset(Dataset):
             else:
                 keypoints[anno["category_id"]] = [anno["keypoint"]]
         
-        hm = torch.cat([torch.tensor(Point2Heatmap(keypoints[id], img.shape[:2], sigma=self.sigma)).unsqueeze(0) \
-            for id in sorted(keypoints.keys())], 0)
+        hm = np.zeros((self.num_classes,) + img.shape[:2])
+        for ID, kps in keypoints.items():
+            assert ID < len(hm), f"cfg.MODEL.NUM_CLASSES is not enough. category_id is {ID} but only {len(hm)} channel(s) found."
+            hm[ID] = Point2Heatmap(kps, img.shape[:2], sigma=self.sigma)
+            
         img_tensor = torch.tensor(img).permute(2, 0, 1).float().to(self.device)
-        hm_tensor = hm.float().to(self.device)
+        hm_tensor = torch.tensor(hm).float().to(self.device)
         return T.Resize(self.input_shape)(img_tensor), T.Resize(self.input_shape)(hm_tensor)
 
 def build_train_loader(cfg):
@@ -95,7 +97,7 @@ def build_train_loader(cfg):
     assert len(cfg.DATASETS.TRAIN) > 0, "Must define at least one dataset in cfg.DATASETS.TRAIN"
     for name in cfg.DATASETS.TRAIN:
         data_list.extend(DatasetCatalog.get(name))
-    dataset = KPDataset(data_list, cfg.MODEL.INPUT_SHAPE, cfg.DATASETS.SIGMA, device=cfg.MODEL.DEVICE)
+    dataset = KPDataset(cfg, data_list)
     return DataLoader(dataset, batch_size=cfg.SOLVER.BATCH_SIZE, shuffle=True)
 
 def build_val_loader(cfg):
@@ -111,7 +113,7 @@ def build_val_loader(cfg):
     assert len(cfg.DATASETS.VAL) > 0, "Must define at least one dataset in cfg.DATASETS.VAL"
     for name in cfg.DATASETS.VAL:
         data_list.extend(DatasetCatalog.get(name))
-    dataset = KPDataset(data_list, cfg.MODEL.INPUT_SHAPE, cfg.DATASETS.SIGMA, device=cfg.MODEL.DEVICE)
+    dataset = KPDataset(cfg, data_list)
     return DataLoader(dataset, batch_size=cfg.SOLVER.BATCH_SIZE, shuffle=True)
 
 def build_test_loader(cfg, dataset_name: str):
@@ -125,7 +127,7 @@ def build_test_loader(cfg, dataset_name: str):
         Pytorch data loader
     """
     data_list = DatasetCatalog.get(dataset_name)
-    dataset = KPDataset(data_list, cfg.MODEL.INPUT_SHAPE, cfg.DATASETS.SIGMA, device=cfg.MODEL.DEVICE)
+    dataset = KPDataset(cfg, data_list)
     return DataLoader(dataset, batch_size=1, shuffle=False)
 
 DatasetCatalog = _DatasetCatalog()
