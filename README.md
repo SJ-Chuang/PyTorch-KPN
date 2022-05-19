@@ -10,6 +10,12 @@ git clone https://github.com/SJ-Chuang/PyTorch-KPN.git
 cd PyTorch-KPN
 ```
 
+### Requirements
+
+- Linux or Windows with Python ≥ 3.6
+- PyTorch ≥ 1.8 and torchvision that matches the PyTorch [installation](https://pytorch.org/).
+- OpenCV ≥ 4.5.5
+
 ## Train on a custom dataset
 
 We use the [hand keypoint detection dataset](http://domedb.perception.cs.cmu.edu/handdb.html) which has 21 hand joints as a demonstration of training.
