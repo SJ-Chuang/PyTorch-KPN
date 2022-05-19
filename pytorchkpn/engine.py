@@ -1,5 +1,21 @@
+from pytorchkpn.registry import MODEL_REGISTRY
+from .data import build_train_loader, build_val_loader
+from .utils import logger
+import torch
+
 class DefaultTrainer:
+    """
+    Default trainer
+    Args:
+        cfg (CfgNode): the full config to be used.
+    """
     def __init__(self, cfg):
+        model = self.build_model(cfg)
+        optimizer = self.build_optimizer(cfg, model)
+        train_loader = self.build_train_loader(cfg)
+    
+    def train(self):
+        ### TODO
         pass
         
     @classmethod
@@ -8,9 +24,8 @@ class DefaultTrainer:
         Returns:
             torch.nn.Module
         """
-        model = build_model(cfg)
-        logger = logging.getLogger(__name__)
-        logger.info("Model:\n{}".format(model))
+        model = MODEL_REGISTRY.get(cfg.MODEL.NAME)(cfg.MODEL.INPUT_SHAPE)
+        logger.info(f"Model: {model}")
         return model
 
     @classmethod
@@ -19,18 +34,15 @@ class DefaultTrainer:
         Returns:
             torch.optim.Optimizer:
 
-        It now calls :func:`detectron2.solver.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        return build_optimizer(cfg, model)
-
-    @classmethod
-    def build_lr_scheduler(cls, cfg, optimizer):
-        """
-        It now calls :func:`detectron2.solver.build_lr_scheduler`.
-        Overwrite it if you'd like a different scheduler.
-        """
-        return build_lr_scheduler(cfg, optimizer)
+        return torch.optim.Adam(
+            model.parameters(),
+            lr=cfg.SOLVER.BASE_LR,
+            betas=cfg.SOLVER.BETAS,
+            eps=cfg.SOLVER.EPS,
+            weight_decay=cfg.SOLVER.WEIGHT_DECAY
+        )
 
     @classmethod
     def build_train_loader(cls, cfg):
@@ -38,18 +50,16 @@ class DefaultTrainer:
         Returns:
             iterable
 
-        It now calls :func:`detectron2.data.build_detection_train_loader`.
         Overwrite it if you'd like a different data loader.
         """
-        return build_detection_train_loader(cfg)
+        return build_train_loader(cfg)
 
     @classmethod
-    def build_val_loader(cls, cfg, dataset_name):
+    def build_val_loader(cls, cfg):
         """
         Returns:
             iterable
 
-        It now calls :func:`detectron2.data.build_detection_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
-        return build_detection_test_loader(cfg, dataset_name)
+        return build_val_loader(cfg)
