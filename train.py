@@ -47,7 +47,3 @@ cfg.MODEL.NUM_CLASSES = 21
 os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 trainer = DefaultTrainer(cfg)
 trainer.train()
-
-model = trainer.model
-model.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, "best_kpn.pth")))
-do_evaluation(cfg, model, dataset_name="val")

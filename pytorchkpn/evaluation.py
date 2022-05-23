@@ -109,14 +109,16 @@ class KPEvaluator(APEvaluator):
             
         return None
 
-def do_evaluation(cfg, model, dataset_name: str):
+def do_evaluation(cfg, model, dataset_name: str, min_dist=7):
     """
     Do evaluation on `dataset_name`.
     Args:
+        cfg (CfgNode): the full config to be used.
         model (torch.nn.Module): a pretrained model.
         dataset_name (str): name of the dataset to be evaluated.
+        min_dist (int): the min tolerated distance of TP between prediction and GT.  
     """
-    evaluator = KPEvaluator(1, min_dist=7)
+    evaluator = KPEvaluator(cfg.MODEL.NUM_CLASSES, min_dist=min_dist)
     model.eval()
     pred_points, ground_truth_points = [], []
     test_loader = build_test_loader(cfg, dataset_name)
@@ -138,4 +140,4 @@ def do_evaluation(cfg, model, dataset_name: str):
             ])
     
     AP = evaluator.evaluate(pred_points, ground_truth_points)
-    return 
+    return {"min_dist": min_dist, "AP": AP}
