@@ -25,6 +25,46 @@ def RandomAug(image, target):
     
     return image, target
 
+class DefaultPredictor:
+    """
+    Default predictor
+    Args:
+        cfg (CfgNode): the full config to be used. 
+    """
+    def __init__(self, cfg):
+        self.cfg = cfg.clone()
+        self.model = MODEL_REGISTRY.get(self.cfg.MODEL.NAME)(
+            self.cfg.MODEL.INPUT_SHAPE, self.cfg.MODEL.NUM_CLASSES).to(self.cfg.MODEL.DEVICE)
+        
+        self.model.eval()
+        assert self.cfg.MODEL.WEIGHTS, "weights path must be given."
+        self.model.load_state_dict(torch.load(self.cfg.MODEL.WEIGHTS))
+        print(f"Load weights from {self.cfg.MODEL.WEIGHTS}")
+
+    def __call__(self, img_bgr):
+        """
+        Args:
+            img_bgr (np.ndarray): an image of shape (H, W, C) (in BGR order).
+
+        Returns:
+            detections (List): detected keypoints.
+        """
+        with torch.no_grad():
+            image = T.Resize(self.cfg.MODEL.INPUT_SHAPE)(
+                torch.tensor(img_bgr).permute(2, 0, 1).float().to(self.cfg.MODEL.DEVICE))
+            image = image.unsqueeze(0)
+            hm = torch.clamp(self.model(image).sigmoid_(), min=1e-4, max=1-1e-4)
+            hmax = torch.nn.functional.max_pool2d(hm, (3, 3), stride=1, padding=1)
+            keypoints = hm * (hmax == hm).float()
+            _, n_classes, hm_h, hm_w = keypoints.shape
+            C, Y, X = torch.where(keypoints[0] > self.cfg.TEST.THRESH)
+            probs = keypoints[0, C, Y, X].cpu().numpy()
+            detections = [[int(c), prob, int(x), int(y)] for c, prob, x, y in zip(C, probs, X, Y)]
+        
+        return detections
+            
+
+
 class DefaultTrainer:
     """
     Default trainer
@@ -38,16 +78,14 @@ class DefaultTrainer:
         self.aug = self.build_aug_func()
         self.train_loader = self.build_train_loader(cfg)
         self.val_loader = self.build_val_loader(cfg)
-        
         self.epoch = cfg.SOLVER.EPOCH
         self.output_dir = cfg.OUTPUT_DIR
-        self.cfg = cfg
-    
-    def train(self):
+        self.cfg = cfg.clone()
         if self.cfg.MODEL.WEIGHTS:
             self.model.load_state_dict(torch.load(self.cfg.MODEL.WEIGHTS))
             print(f"Load weights from {self.cfg.MODEL.WEIGHTS}")
-        
+    
+    def train(self):
         open(os.path.join(self.output_dir, "kpn_cfg.yaml"), "w").write(self.cfg.dump())
         lowest_val_loss, history = float("inf"), [[], []]
         for e in range(self.epoch):
